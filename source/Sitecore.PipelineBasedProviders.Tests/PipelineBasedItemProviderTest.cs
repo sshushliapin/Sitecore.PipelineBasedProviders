@@ -7,14 +7,18 @@
   using Sitecore.FakeDb;
   using Sitecore.FakeDb.Pipelines;
   using Sitecore.Globalization;
+  using Sitecore.PipelineBasedProviders.Pipelines;
   using Sitecore.SecurityModel;
   using Xunit;
+  using Xunit.Extensions;
 
   public class PipelineBasedItemProviderTest
   {
     private const string ItemName = "home";
 
     private const SecurityCheck SecurityCheck = SecurityModel.SecurityCheck.Enable;
+
+    private readonly ItemProvider defaultProvider;
 
     private readonly PipelineBasedItemProvider provider;
 
@@ -24,7 +28,8 @@
 
     public PipelineBasedItemProviderTest()
     {
-      this.provider = new PipelineBasedItemProvider();
+      this.defaultProvider = Substitute.For<ItemProvider>();
+      this.provider = new PipelineBasedItemProvider(this.defaultProvider);
     }
 
     [Fact]
@@ -35,7 +40,27 @@
     }
 
     [Fact]
-    public void ShouldAddFromTemplateUsingPipeline()
+    public void ShouldInjectDefaultProvider()
+    {
+      // arrange
+      var pipelineBasedItemProvider = new PipelineBasedItemProvider(this.defaultProvider);
+
+      // act & assert
+      pipelineBasedItemProvider.DefaultProvider.Should().BeSameAs(this.defaultProvider);
+    }
+
+    [Fact]
+    public void ShouldResolveDefaultProviderIfNothingIngected()
+    {
+      // arrange
+      var pipelineBasedItemProvider = new PipelineBasedItemProvider();
+
+      // act & assert
+      pipelineBasedItemProvider.DefaultProvider.Should().BeSameAs(ItemManager.Providers["default"]);
+    }
+
+    [Fact]
+    public void ShouldCallAddFromTemplatePipeline()
     {
       // arrange
       using (var db = new Db { new DbItem("new") })
@@ -46,6 +71,7 @@
         var processor = Substitute.For<IPipelineProcessor>();
         processor
           .When(p => p.Process(Arg.Is<AddFromTemplateArgs>(a =>
+            a.Provider == this.defaultProvider &&
             a.ItemName == ItemName &&
             a.TemplateId == this.templateId &&
             a.Destination == destination &&
@@ -63,31 +89,7 @@
     }
 
     [Fact]
-    public void ShouldAddFromTemplateUsingDefaultProviderIfNoItemCreatedByPipeline()
-    {
-      // arrange
-      using (var db = new Db())
-      {
-        var destination = db.GetItem("/sitecore/content");
-
-        var processor = Substitute.For<IPipelineProcessor>();
-        db.PipelineWatcher.Register("addFromTemplate", processor);
-
-        // act
-        var result = this.provider.AddFromTemplate(ItemName, this.templateId, destination, this.itemId);
-
-        // assert
-        db.GetItem("/sitecore/content/home").Should().NotBeNull();
-
-        result.Name.Should().Be(ItemName);
-        result.ID.Should().Be(this.itemId);
-        result.TemplateID.Should().Be(this.templateId);
-        result.Parent.Should().Be(destination);
-      }
-    }
-
-    [Fact]
-    public void ShouldAddVersionUsingPipeline()
+    public void ShouldCallAddVersionPipeline()
     {
       // arrange
       using (var db = new Db { new DbItem("home"), new DbItem("result") })
@@ -97,7 +99,10 @@
 
         var processor = Substitute.For<IPipelineProcessor>();
         processor
-          .When(p => p.Process(Arg.Is<AddVersionArgs>(a => a.Item == item && a.SecurityCheck == SecurityCheck)))
+          .When(p => p.Process(Arg.Is<AddVersionArgs>(a =>
+            a.Provider == this.defaultProvider &&
+            a.Item == item &&
+            a.SecurityCheck == SecurityCheck)))
           .Do(ci => ci.Arg<AddVersionArgs>().Result = expected);
 
         db.PipelineWatcher.Register("addVersion", processor);
@@ -111,26 +116,7 @@
     }
 
     [Fact]
-    public void ShouldAddVersionUsingDefaultProviderIfNoVersionAddedByPipeline()
-    {
-      // arrange
-      using (var db = new Db { new DbItem("home") })
-      {
-        var item = db.GetItem("/sitecore/content/home");
-
-        var processor = Substitute.For<IPipelineProcessor>();
-        db.PipelineWatcher.Register("addVersion", processor);
-
-        // act
-        var result = this.provider.AddVersion(item, SecurityCheck);
-
-        // assert
-        result.Versions.Count.Should().Be(2);
-      }
-    }
-
-    [Fact]
-    public void ShouldCreateItemUsingPipeline()
+    public void ShouldCallCreateItemPipeline()
     {
       // arrange
       using (var db = new Db { new DbItem("new") })
@@ -141,6 +127,7 @@
         var processor = Substitute.For<IPipelineProcessor>();
         processor
           .When(p => p.Process(Arg.Is<CreateItemArgs>(a =>
+            a.Provider == this.defaultProvider &&
             a.ItemName == ItemName &&
             a.TemplateId == this.templateId &&
             a.Destination == destination &&
@@ -158,45 +145,50 @@
       }
     }
 
-    [Fact]
-    public void ShouldCreateItemUsingDefaultProviderIfNoItemCreatedByPipeline()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShouldCallDeleteItemPipeline(bool isDeleted)
     {
       // arrange
-      using (var db = new Db())
+      using (var db = new Db { new DbItem("home") })
       {
-        var destination = db.GetItem("/sitecore/content");
+        var item = db.GetItem("/sitecore/content/home");
 
         var processor = Substitute.For<IPipelineProcessor>();
-        db.PipelineWatcher.Register("createItem", processor);
+        processor
+          .When(p => p.Process(Arg.Is<DeleteItemArgs>(a =>
+            a.Provider == this.defaultProvider &&
+            a.Item == item &&
+            a.SecurityCheck == SecurityCheck)))
+          .Do(ci => ci.Arg<DeleteItemArgs>().Result = isDeleted);
+
+        db.PipelineWatcher.Register("deleteItem", processor);
 
         // act
-        var result = this.provider.CreateItem(ItemName, destination, this.templateId, this.itemId, SecurityCheck);
+        var result = this.provider.DeleteItem(item, SecurityCheck);
 
         // assert
-        db.GetItem("/sitecore/content/home").Should().NotBeNull();
-
-        result.Name.Should().Be(ItemName);
-        result.ID.Should().Be(this.itemId);
-        result.TemplateID.Should().Be(this.templateId);
-        result.Parent.Should().Be(destination);
+        result.Should().Be(isDeleted);
       }
     }
 
     [Fact]
-    public void ShouldGetItemUsingPipeline()
+    public void ShouldCallGetItemByIdPipeline()
     {
       // arrange
       var language = Language.Parse("en");
       var version = Version.Parse(2);
 
-      using (var db = new Db { new DbItem("home") })
+      using (var db = new Db { new DbItem("home", this.itemId) })
       {
         var database = db.Database;
         var item = db.GetItem("/sitecore/content/home");
 
         var processor = Substitute.For<IPipelineProcessor>();
         processor
-          .When(p => p.Process(Arg.Is<GetItemArgs>(a =>
+          .When(p => p.Process(Arg.Is<GetItemByIdArgs>(a =>
+            a.Provider == this.defaultProvider &&
             a.ItemId == this.itemId &&
             a.Language == language &&
             a.Version == version &&
@@ -204,7 +196,7 @@
             a.SecurityCheck == SecurityCheck)))
           .Do(ci => ci.Arg<GetItemArgs>().Result = item);
 
-        db.PipelineWatcher.Register("getItem", processor);
+        db.PipelineWatcher.Register("getItemById", processor);
 
         // act
         var result = this.provider.GetItem(this.itemId, language, version, database, SecurityCheck);
@@ -214,28 +206,30 @@
       }
     }
 
-    [Fact]
-    public void ShouldGetItemUsingDefaultProviderIfNoItemCreatedByPipeline()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShouldCallSaveItemPipeline(bool isDeleted)
     {
       // arrange
-      var language = Language.Parse("en");
-      var version = Version.Parse(2);
-
-      using (var db = new Db { new DbItem("home", this.itemId) })
+      using (var db = new Db { new DbItem("home") })
       {
-        var database = db.Database;
+        var item = db.GetItem("/sitecore/content/home");
 
         var processor = Substitute.For<IPipelineProcessor>();
-        db.PipelineWatcher.Register("getItem", processor);
+        processor
+          .When(p => p.Process(Arg.Is<SaveItemArgs>(a =>
+            a.Provider == this.defaultProvider &&
+            a.Item == item)))
+          .Do(ci => ci.Arg<SaveItemArgs>().Result = isDeleted);
+
+        db.PipelineWatcher.Register("saveItem", processor);
 
         // act
-        var result = this.provider.GetItem(this.itemId, language, version, database, SecurityCheck);
+        var result = this.provider.SaveItem(item);
 
         // assert
-        result.Name.Should().Be(ItemName);
-        result.ID.Should().Be(this.itemId);
-        result.Language.Should().Be(language);
-        result.Version.Should().Be(version);
+        result.Should().Be(isDeleted);
       }
     }
   }

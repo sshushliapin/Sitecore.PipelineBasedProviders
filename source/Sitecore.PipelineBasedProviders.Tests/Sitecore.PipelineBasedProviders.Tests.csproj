@@ -39,9 +39,9 @@
     <Reference Include="NSubstitute">
       <HintPath>..\packages\NSubstitute.1.7.2.0\lib\NET45\NSubstitute.dll</HintPath>
     </Reference>
-    <Reference Include="Sitecore.FakeDb, Version=0.20.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Sitecore.FakeDb, Version=0.21.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Sitecore.FakeDb.0.20.0\lib\net45\Sitecore.FakeDb.dll</HintPath>
+      <HintPath>..\packages\Sitecore.FakeDb.0.21.0\lib\net45\Sitecore.FakeDb.dll</HintPath>
     </Reference>
     <Reference Include="Sitecore.Kernel">
       <HintPath>..\..\lib\Sitecore.Kernel.dll</HintPath>
@@ -57,14 +57,25 @@
     <Reference Include="xunit">
       <HintPath>..\packages\xunit.1.9.2\lib\net20\xunit.dll</HintPath>
     </Reference>
+    <Reference Include="xunit.extensions">
+      <HintPath>..\packages\xunit.extensions.1.9.2\lib\net20\xunit.extensions.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConfigurationTests.cs" />
+    <Compile Include="FunctionalTests.cs" />
     <Compile Include="PipelineBasedItemProviderTest.cs" />
+    <Compile Include="Pipelines\GetItemTest.cs" />
+    <Compile Include="Pipelines\PipelineBasedProviderArgsTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
-    <None Include="packages.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Sitecore.PipelineBasedProviders\Sitecore.PipelineBasedProviders.csproj">

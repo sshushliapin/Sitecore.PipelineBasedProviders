@@ -41,11 +41,23 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GetItem.cs" />
-    <Compile Include="CreateItemArgs.cs" />
-    <Compile Include="AddFromTemplateArgs.cs" />
-    <Compile Include="AddVersionItem.cs" />
+    <Compile Include="Pipelines\AddFromTemplate.cs" />
+    <Compile Include="Pipelines\SaveItem.cs" />
+    <Compile Include="Pipelines\DeleteItem.cs" />
+    <Compile Include="Pipelines\SaveItemArgs.cs" />
+    <Compile Include="Pipelines\DeleteItemArgs.cs" />
+    <Compile Include="Pipelines\CreateItem.cs" />
+    <Compile Include="Pipelines\AddVersion.cs" />
+    <Compile Include="Pipelines\GetItemByPath.cs" />
+    <Compile Include="Pipelines\GetItemByIdArgs.cs" />
+    <Compile Include="Pipelines\GetItemByPathArgs.cs" />
+    <Compile Include="Pipelines\GetItemArgs.cs" />
+    <Compile Include="Pipelines\CreateItemArgs.cs" />
+    <Compile Include="Pipelines\AddFromTemplateArgs.cs" />
+    <Compile Include="Pipelines\AddVersionItem.cs" />
     <Compile Include="PipelineBasedItemProvider.cs" />
+    <Compile Include="Pipelines\PipelineBasedProviderArgs.cs" />
+    <Compile Include="Pipelines\GetItemById.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
